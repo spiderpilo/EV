@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pkl
+*.wav
+.vscode/
+.DS_Store
+*.egg-info/
+dist/
+build/
+.model_cache/
+tmp_audio.*
