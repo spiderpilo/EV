@@ -23,7 +23,7 @@ class WakeWordDetector:
                 inference_framework="onnx",
             )
             self._model_name = "hey_jarvis"
-        self._threshold = 0.5
+        self._threshold = 0.7
 
     def detect(self, audio_chunk: np.ndarray) -> bool:
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
