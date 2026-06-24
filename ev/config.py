@@ -13,8 +13,9 @@ SAMPLE_RATE = 16000
 AUDIO_CHANNELS = 1
 LISTEN_DURATION_SEC = 5
 
-LLM_MODEL = "mlx-community/Mistral-7B-Instruct-v0.3-4bit"
-WHISPER_MODEL = "mlx-community/whisper-base"
+LLM_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+LLM_ADAPTER = "models/ev-finetuned"
+WHISPER_MODEL = "base"
 
 FACE_RECOGNITION_TOLERANCE = 0.6
 SPEAKER_VERIFICATION_THRESHOLD = 0.25

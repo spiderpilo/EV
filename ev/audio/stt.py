@@ -1,17 +1,15 @@
 import numpy as np
-import mlx_whisper
+from faster_whisper import WhisperModel
 
 from ev.config import WHISPER_MODEL
 
 
 class SpeechToText:
     def __init__(self):
-        self._model_path = WHISPER_MODEL
+        self._model = WhisperModel(
+            WHISPER_MODEL, device="cuda", compute_type="float16"
+        )
 
     def transcribe(self, audio: np.ndarray) -> str:
-        result = mlx_whisper.transcribe(
-            audio,
-            path_or_hf_repo=self._model_path,
-            language="en",
-        )
-        return result["text"].strip()
+        segments, _ = self._model.transcribe(audio, language="en")
+        return " ".join(s.text for s in segments).strip()

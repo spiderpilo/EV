@@ -1,15 +1,28 @@
 import numpy as np
+from pathlib import Path
+
 from openwakeword.model import Model
 
-from ev.config import SAMPLE_RATE
+from ev.config import SAMPLE_RATE, PROJECT_ROOT
+
+
+CUSTOM_MODEL_PATH = PROJECT_ROOT / "models" / "wake_word" / "ev_wakeword.onnx"
 
 
 class WakeWordDetector:
     def __init__(self):
-        self._model = Model(
-            wakeword_models=["hey_jarvis"],
-            inference_framework="onnx",
-        )
+        if CUSTOM_MODEL_PATH.exists():
+            self._model = Model(
+                wakeword_models=[str(CUSTOM_MODEL_PATH)],
+                inference_framework="onnx",
+            )
+            self._model_name = CUSTOM_MODEL_PATH.stem
+        else:
+            self._model = Model(
+                wakeword_models=["hey_jarvis"],
+                inference_framework="onnx",
+            )
+            self._model_name = "hey_jarvis"
         self._threshold = 0.5
 
     def detect(self, audio_chunk: np.ndarray) -> bool:

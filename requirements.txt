@@ -1,7 +1,12 @@
 # Core ML / LLM
-mlx>=0.18
-mlx-lm>=0.19
-mlx-whisper>=0.4
+torch>=2.0
+torchaudio>=2.0
+transformers>=4.40
+accelerate>=0.27
+bitsandbytes>=0.43
+
+# Speech-to-text
+faster-whisper>=1.0
 
 # Wake word
 openwakeword>=0.6
@@ -13,8 +18,6 @@ Pillow>=10.0
 
 # Speaker verification
 speechbrain>=1.0
-torch>=2.0
-torchaudio>=2.0
 
 # Audio capture
 sounddevice>=0.4
@@ -24,5 +27,7 @@ numpy>=1.26
 pyttsx3>=2.90
 
 # Fine-tuning extras
+peft>=0.10
+trl>=0.8
 datasets>=2.14
 huggingface-hub>=0.20

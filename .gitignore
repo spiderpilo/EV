@@ -1,8 +1,10 @@
 .env
+.venv/
 __pycache__/
 *.pyc
 *.pkl
 *.wav
+*.onnx
 .vscode/
 .DS_Store
 *.egg-info/
@@ -10,3 +12,5 @@ dist/
 build/
 .model_cache/
 tmp_audio.*
+models/ev-finetuned/
+models/wake_word/clips/
