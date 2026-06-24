@@ -17,6 +17,8 @@ LLM_MODEL = "Qwen/Qwen2.5-3B-Instruct"
 LLM_ADAPTER = "models/ev-finetuned"
 WHISPER_MODEL = "base"
 
+TTS_PITCH_SHIFT = 1.2  # 1.0 = original, higher = younger (try 1.1 to 1.2)
+
 FACE_RECOGNITION_TOLERANCE = 0.6
 SPEAKER_VERIFICATION_THRESHOLD = 0.25
 

@@ -54,12 +54,13 @@ class LLMBrain:
         messages.append({"role": "user", "content": user_message})
 
         inputs = self._tokenizer.apply_chat_template(
-            messages, tokenize=True, add_generation_prompt=True, return_tensors="pt"
+            messages, tokenize=True, add_generation_prompt=True, return_tensors="pt",
+            return_dict=True,
         ).to(self._model.device)
 
         with torch.no_grad():
             outputs = self._model.generate(
-                inputs,
+                **inputs,
                 max_new_tokens=256,
                 do_sample=True,
                 temperature=0.7,
@@ -67,6 +68,6 @@ class LLMBrain:
             )
 
         response = self._tokenizer.decode(
-            outputs[0][inputs.shape[-1]:], skip_special_tokens=True
+            outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True
         )
         return response.strip()

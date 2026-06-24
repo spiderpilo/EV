@@ -31,7 +31,7 @@ class SpeakerVerifier:
         embeddings = []
         for audio in audio_samples:
             tensor = torch.tensor(audio).unsqueeze(0)
-            emb = self._model.encode_batch(tensor).squeeze().numpy()
+            emb = self._model.encode_batch(tensor).squeeze().cpu().numpy()
             embeddings.append(emb)
         self._enrolled_embedding = np.mean(embeddings, axis=0)
         self._embedding_path().parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +47,7 @@ class SpeakerVerifier:
         if not self.is_enrolled:
             return False, 0.0
         tensor = torch.tensor(audio).unsqueeze(0)
-        emb = self._model.encode_batch(tensor).squeeze().numpy()
+        emb = self._model.encode_batch(tensor).squeeze().cpu().numpy()
         similarity = np.dot(emb, self._enrolled_embedding) / (
             np.linalg.norm(emb) * np.linalg.norm(self._enrolled_embedding)
         )

@@ -24,7 +24,7 @@ sounddevice>=0.4
 numpy>=1.26
 
 # Text-to-speech
-pyttsx3>=2.90
+piper-tts>=1.4
 
 # Fine-tuning extras
 peft>=0.10

@@ -16,7 +16,7 @@ dependencies = [
     "sounddevice>=0.4",
     "numpy>=1.26",
     "Pillow>=10.0",
-    "pyttsx3>=2.90",
+    "piper-tts>=1.4",
     "opencv-python>=4.8",
 ]
 

@@ -51,12 +51,16 @@ def main():
     print("  EV is ready. Say 'EV' to activate!")
     print("=" * 50 + "\n")
 
+    greeted = False
+
     for chunk in listener.stream_chunks(chunk_duration=0.5):
         if not wake_word.detect(chunk):
             continue
 
         print("\n[EV] Wake word detected! Listening...")
-        tts.speak("Yes?")
+        if not greeted:
+            tts.speak("Hello Piolo")
+            greeted = True
 
         audio = listener.record(duration=LISTEN_DURATION_SEC)
 
