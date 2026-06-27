@@ -34,8 +34,8 @@ class LLMBrain:
         self._model.eval()
         print("  LLM loaded.")
 
-    def think(self, user_message: str, context: dict | None = None) -> str:
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    def think(self, user_message: str, context: dict | None = None, system_prompt: str | None = None) -> str:
+        messages = [{"role": "system", "content": system_prompt or SYSTEM_PROMPT}]
 
         if context:
             context_parts = []

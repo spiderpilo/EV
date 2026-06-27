@@ -11,7 +11,7 @@ from ev.vision.face_recognition import FaceRecognizer
 from ev.brain.llm import LLMBrain
 from ev.tts.synthesizer import TextToSpeech
 from ev.shell.executor import is_dangerous, run_command
-from ev.config import LISTEN_DURATION_SEC
+from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
 TERMINAL_KEYWORDS = ("terminal", "termin")
@@ -78,12 +78,7 @@ def terminal_mode(listener, stt, speaker, brain, tts):
             tts.speak("Leaving terminal mode.")
             return
 
-        response = brain.think(
-            f"The user is in terminal mode. They said: \"{text}\". "
-            "Translate this into a single Linux shell command. "
-            "Respond ONLY with [CMD: the command] and nothing else. "
-            "If you can't figure out a command, say so briefly.",
-        )
+        response = brain.think(text, system_prompt=TERMINAL_SYSTEM_PROMPT)
         print(f"  [EV]: {response}")
 
         match = CMD_PATTERN.search(response)
@@ -98,6 +93,13 @@ def terminal_mode(listener, stt, speaker, brain, tts):
             print(f"  [EV]: {msg}")
             tts.speak(msg)
             continue
+
+        announce = brain.think(
+            f"You are about to run this command: {command}\n"
+            "Say ONE short sentence about what you're doing. Example: 'Launching Discord.' or 'Checking disk space.'",
+        )
+        print(f"  [EV]: {announce}")
+        tts.speak(announce)
 
         print(f"  [SHELL] Running: {command}")
         success, output = run_command(command)
