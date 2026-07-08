@@ -227,6 +227,45 @@ def train_model(positive_features, negative_features, output_dir):
     return str(onnx_path)
 
 
+REAL_POSITIVE_DIR = OUTPUT_DIR / "clips" / "real_positive"
+
+
+def load_real_clips(directory: Path) -> list:
+    clips = []
+    wav_files = sorted(directory.glob("*.wav")) if directory.exists() else []
+    for wav_path in wav_files:
+        try:
+            sr, data = scipy.io.wavfile.read(str(wav_path))
+            if data.dtype != np.int16:
+                data = (data * 32767).astype(np.int16)
+            if sr != SAMPLE_RATE:
+                n_samples = int(len(data) * SAMPLE_RATE / sr)
+                data = np.interp(
+                    np.linspace(0, len(data), n_samples),
+                    np.arange(len(data)),
+                    data.astype(np.float32),
+                ).astype(np.int16)
+            if data.ndim > 1:
+                data = data[:, 0]
+            clips.append(pad_or_trim(data))
+        except Exception as e:
+            print(f"    Skipping {wav_path.name}: {e}")
+    return clips
+
+
+def augment_clip(audio: np.ndarray, n_variants: int = 3) -> list:
+    """Return n_variants augmented copies of a real recording."""
+    variants = [audio]
+    for _ in range(n_variants - 1):
+        noise_level = np.random.uniform(0.001, 0.015)
+        aug = add_noise(audio, noise_level)
+        # slight volume jitter
+        scale = np.random.uniform(0.8, 1.2)
+        aug = np.clip(aug.astype(np.float32) * scale, -32768, 32767).astype(np.int16)
+        variants.append(aug)
+    return variants
+
+
 def main():
     print("=" * 50)
     print("  EV — Wake Word Training")
@@ -246,19 +285,33 @@ def main():
         "what time is it", "how are you",
     ]
 
-    print("\n[1/4] Generating positive clips ('EV')...")
-    pos_clips = generate_clips(positive_phrases, pos_dir, n_target=500, label="positive")
+    print("\n[1/5] Loading real voice recordings...")
+    real_clips = load_real_clips(REAL_POSITIVE_DIR)
+    if real_clips:
+        augmented = []
+        for clip in real_clips:
+            augmented.extend(augment_clip(clip, n_variants=5))
+        print(f"  Loaded {len(real_clips)} real clips → {len(augmented)} with augmentation")
+    else:
+        augmented = []
+        print("  No real recordings found. Run `python -m scripts.record_wake_word` first for best results.")
 
-    print("[2/4] Generating negative clips...")
+    print("\n[2/5] Generating synthetic positive clips ('EV')...")
+    n_synthetic = max(100, 500 - len(augmented))
+    pos_clips = generate_clips(positive_phrases, pos_dir, n_target=n_synthetic, label="positive")
+    # real clips go first so they're weighted by repetition
+    pos_clips = augmented + pos_clips
+
+    print("[3/5] Generating negative clips...")
     neg_clips = generate_clips(negative_phrases, neg_dir, n_target=500, label="negative")
 
-    print("[3/4] Computing openwakeword features...")
+    print("[4/5] Computing openwakeword features...")
     pos_features = clips_to_features(pos_clips)
     neg_features = clips_to_features(neg_clips)
     print(f"  Positive features: {pos_features.shape}")
     print(f"  Negative features: {neg_features.shape}")
 
-    print("[4/4] Training wake word model...")
+    print("[5/5] Training wake word model...")
     onnx_path = train_model(pos_features, neg_features, OUTPUT_DIR)
 
     print(f"\nDone! Wake word model saved to: {onnx_path}")
