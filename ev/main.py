@@ -12,6 +12,7 @@ from ev.brain.llm import LLMBrain
 from ev.tts.synthesizer import TextToSpeech
 from ev.shell.executor import is_dangerous, run_command
 from ev.shell.shortcuts import match_shortcut
+from ev.search.web import is_search_query, search
 from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
@@ -215,6 +216,22 @@ def main():
             "face_recognized": is_owner_face,
             "voice_verified": is_owner_voice,
         }
+
+        if is_search_query(text):
+            print(f"  [SEARCH] Querying DuckDuckGo: {text}")
+            tts.speak("Let me look that up.")
+            snippets = search(text)
+            print(f"  [SEARCH] Results: {snippets[:300]}...")
+            response = brain.think(
+                f"Search results for '{text}':\n\n{snippets}\n\n"
+                "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
+                context=context,
+            )
+            print(f"  [EV]: {response}")
+            tts.speak(response)
+            wake_word.reset()
+            continue
+
         response = brain.think(text, context=context)
         print(f"  [EV]: {response}")
 
