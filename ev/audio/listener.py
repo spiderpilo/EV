@@ -34,6 +34,12 @@ class AudioListener:
             except Exception:
                 break
 
+    def cooldown(self, seconds: float = 1.5):
+        """Sleep then flush — lets openwakeword's sliding window age out."""
+        import time
+        time.sleep(seconds)
+        self.flush()
+
     def record(self, duration: float | None = None) -> np.ndarray:
         duration = duration or LISTEN_DURATION_SEC
         print(f"  Listening for {duration}s...")

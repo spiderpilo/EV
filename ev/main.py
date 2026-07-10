@@ -1,7 +1,6 @@
 import re
 import signal
 import sys
-import time
 
 from ev.wake_word.detector import WakeWordDetector
 from ev.audio.listener import AudioListener
@@ -221,24 +220,27 @@ def main():
 
         if not text or text.strip() in ("", ".", ".."):
             print("  No speech detected. Returning to idle.")
+            listener.cooldown()
             wake_word.reset()
             continue
 
         text_lower = text.strip().lower().rstrip(".")
         if is_terminal_trigger(text_lower):
             terminal_mode(listener, stt, speaker, brain, tts)
+            listener.cooldown()
             wake_word.reset()
-            time.sleep(1)
             continue
 
         if text_lower in INTRO_TRIGGERS:
             print(f"  [EV]: {INTRO_SCRIPT}")
             tts.speak(INTRO_SCRIPT)
+            listener.cooldown()
             wake_word.reset()
             continue
 
         if any(text_lower.startswith(t) for t in PROJECT_TRIGGERS):
             select_project(listener, stt, tts)
+            listener.cooldown()
             wake_word.reset()
             continue
 
@@ -250,6 +252,7 @@ def main():
                 print(f"  [EV]: {reply}")
                 tts.speak(reply)
             run_command(command)
+            listener.cooldown()
             wake_word.reset()
             continue
 
@@ -273,6 +276,7 @@ def main():
             )
             print(f"  [EV]: {response}")
             tts.speak(response)
+            listener.cooldown()
             wake_word.reset()
             continue
 
