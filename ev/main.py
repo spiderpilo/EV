@@ -13,6 +13,7 @@ from ev.tts.synthesizer import TextToSpeech
 from ev.shell.executor import is_dangerous, run_command
 from ev.shell.shortcuts import match_shortcut
 from ev.search.web import is_search_query, search
+from ev.projects import PROJECT_TRIGGERS, list_projects, match_project, open_project
 from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT, INTRO_TRIGGERS, INTRO_SCRIPT
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
@@ -54,6 +55,34 @@ def handle_response(response, brain, tts, context):
     )
     print(f"  [EV]: {followup}")
     tts.speak(followup)
+
+
+def select_project(listener, stt, tts):
+    projects = list_projects()
+    if not projects:
+        tts.speak("I couldn't find any projects in your Repos folder.")
+        return
+
+    print(f"  [PROJECTS] Found: {', '.join(projects)}")
+    tts.speak("Which project?")
+
+    audio = listener.record(duration=LISTEN_DURATION_SEC)
+    spoken = stt.transcribe(audio).strip()
+    print(f"  [PROJECTS] You said: \"{spoken}\"")
+
+    if not spoken:
+        tts.speak("I didn't catch that.")
+        return
+
+    match = match_project(spoken, projects)
+    if not match:
+        tts.speak(f"I couldn't find a project matching {spoken}.")
+        return
+
+    cmd = open_project(match)
+    print(f"  [PROJECTS] Opening: {cmd}")
+    tts.speak(f"Opening {match}.")
+    run_command(cmd)
 
 
 def terminal_mode(listener, stt, speaker, brain, tts):
@@ -204,6 +233,11 @@ def main():
         if text_lower in INTRO_TRIGGERS:
             print(f"  [EV]: {INTRO_SCRIPT}")
             tts.speak(INTRO_SCRIPT)
+            wake_word.reset()
+            continue
+
+        if any(text_lower.startswith(t) for t in PROJECT_TRIGGERS):
+            select_project(listener, stt, tts)
             wake_word.reset()
             continue
 
