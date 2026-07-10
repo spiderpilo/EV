@@ -13,7 +13,7 @@ from ev.tts.synthesizer import TextToSpeech
 from ev.shell.executor import is_dangerous, run_command
 from ev.shell.shortcuts import match_shortcut
 from ev.search.web import is_search_query, search
-from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT
+from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT, INTRO_TRIGGERS, INTRO_SCRIPT
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
 TERMINAL_KEYWORDS = ("terminal", "termin")
@@ -199,6 +199,12 @@ def main():
             terminal_mode(listener, stt, speaker, brain, tts)
             wake_word.reset()
             time.sleep(1)
+            continue
+
+        if text_lower in INTRO_TRIGGERS:
+            print(f"  [EV]: {INTRO_SCRIPT}")
+            tts.speak(INTRO_SCRIPT)
+            wake_word.reset()
             continue
 
         shortcut = match_shortcut(text)
