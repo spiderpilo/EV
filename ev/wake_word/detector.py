@@ -25,19 +25,27 @@ class WakeWordDetector:
             )
             self._model_name = "hey_jarvis"
         self._threshold = 0.6 if CUSTOM_MODEL_PATH.exists() else 0.7
-        self._ready_at = 0.0  # epoch time when detections are trusted again
+        self._ready_at = 0.0
+        self._consecutive = 0
 
     def detect(self, audio_chunk: np.ndarray) -> bool:
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
         prediction = self._model.predict(audio_int16)
         if time.time() < self._ready_at:
+            self._consecutive = 0
             return False
-        for model_name, score in prediction.items():
-            if score > self._threshold:
-                self._model.reset()
-                return True
+        hit = any(score > self._threshold for score in prediction.values())
+        if hit:
+            self._consecutive += 1
+        else:
+            self._consecutive = 0
+        if self._consecutive >= 2:
+            self._consecutive = 0
+            self._model.reset()
+            return True
         return False
 
     def reset(self):
         self._model.reset()
+        self._consecutive = 0
         self._ready_at = time.time() + _COOLDOWN_SEC
