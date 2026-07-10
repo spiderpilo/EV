@@ -11,6 +11,7 @@ from ev.vision.face_recognition import FaceRecognizer
 from ev.brain.llm import LLMBrain
 from ev.tts.synthesizer import TextToSpeech
 from ev.shell.executor import is_dangerous, run_command
+from ev.shell.shortcuts import match_shortcut
 from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
@@ -78,28 +79,36 @@ def terminal_mode(listener, stt, speaker, brain, tts):
             tts.speak("Leaving terminal mode.")
             return
 
-        response = brain.think(text, system_prompt=TERMINAL_SYSTEM_PROMPT)
-        print(f"  [EV]: {response}")
-
-        match = CMD_PATTERN.search(response)
-        if not match:
-            tts.speak(response)
-            continue
-
-        command = match.group(1).strip()
+        shortcut = match_shortcut(text)
+        if shortcut:
+            command, reply = shortcut
+            print(f"  [SHORTCUT] {command}")
+            is_shortcut = True
+        else:
+            response = brain.think(text, system_prompt=TERMINAL_SYSTEM_PROMPT)
+            print(f"  [EV]: {response}")
+            match = CMD_PATTERN.search(response)
+            if not match:
+                tts.speak(response)
+                continue
+            command, reply, is_shortcut = match.group(1).strip(), None, False
 
         if is_dangerous(command):
-            msg = f"That command looks dangerous. I won't run it."
+            msg = "That command looks dangerous. I won't run it."
             print(f"  [EV]: {msg}")
             tts.speak(msg)
             continue
 
-        announce = brain.think(
-            f"You are about to run this command: {command}\n"
-            "Say ONE short sentence about what you're doing. Example: 'Launching Discord.' or 'Checking disk space.'",
-        )
-        print(f"  [EV]: {announce}")
-        tts.speak(announce)
+        if reply:
+            print(f"  [EV]: {reply}")
+            tts.speak(reply)
+        elif not is_shortcut:
+            announce = brain.think(
+                f"You are about to run this command: {command}\n"
+                "Say ONE short sentence about what you're doing.",
+            )
+            print(f"  [EV]: {announce}")
+            tts.speak(announce)
 
         print(f"  [SHELL] Running: {command}")
         success, output = run_command(command)
@@ -189,6 +198,17 @@ def main():
             terminal_mode(listener, stt, speaker, brain, tts)
             wake_word.reset()
             time.sleep(1)
+            continue
+
+        shortcut = match_shortcut(text)
+        if shortcut:
+            command, reply = shortcut
+            print(f"  [SHORTCUT] {command}")
+            if reply:
+                print(f"  [EV]: {reply}")
+                tts.speak(reply)
+            run_command(command)
+            wake_word.reset()
             continue
 
         context = {
