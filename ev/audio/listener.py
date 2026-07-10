@@ -34,7 +34,7 @@ class AudioListener:
             except Exception:
                 break
 
-    def cooldown(self, seconds: float = 1.5):
+    def cooldown(self, seconds: float = 2.0):
         """Sleep then flush — lets openwakeword's sliding window age out."""
         import time
         time.sleep(seconds)
