@@ -27,6 +27,13 @@ class AudioListener:
                 chunk = self._queue.get()
                 yield chunk.flatten()
 
+    def flush(self):
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+            except Exception:
+                break
+
     def record(self, duration: float | None = None) -> np.ndarray:
         duration = duration or LISTEN_DURATION_SEC
         print(f"  Listening for {duration}s...")
@@ -37,4 +44,5 @@ class AudioListener:
             dtype="float32",
         )
         sd.wait()
+        self.flush()
         return audio.flatten()
