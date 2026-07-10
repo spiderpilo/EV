@@ -220,7 +220,8 @@ def main():
         print(f"  You said: \"{text}\"")
 
         if not text or text.strip() in ("", ".", ".."):
-            print("  No speech detected.")
+            print("  No speech detected. Returning to idle.")
+            wake_word.reset()
             continue
 
         text_lower = text.strip().lower().rstrip(".")
