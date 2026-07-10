@@ -218,12 +218,15 @@ def main():
         }
 
         if is_search_query(text):
-            print(f"  [SEARCH] Querying DuckDuckGo: {text}")
-            tts.speak("Let me look that up.")
-            snippets = search(text)
-            print(f"  [SEARCH] Results: {snippets[:300]}...")
+            query = text.strip().rstrip("?.!")
+            encoded = query.replace(" ", "+")
+            url = f"https://www.google.com/search?q={encoded}"
+            print(f"  [SEARCH] Opening browser + querying DDG: {query}")
+            run_command(f"google-chrome '{url}'")
+            snippets = search(query)
+            print(f"  [SEARCH] Snippets: {snippets[:300]}...")
             response = brain.think(
-                f"Search results for '{text}':\n\n{snippets}\n\n"
+                f"Search results for '{query}':\n\n{snippets}\n\n"
                 "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
                 context=context,
             )
