@@ -200,6 +200,8 @@ def main():
         if not greeted:
             tts.speak("Hello Piolo")
             greeted = True
+        else:
+            tts.chime()
 
         audio = listener.record(duration=LISTEN_DURATION_SEC)
 
