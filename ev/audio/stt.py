@@ -3,6 +3,11 @@ from faster_whisper import WhisperModel
 
 from ev.config import WHISPER_MODEL
 
+# Minimum RMS energy to bother transcribing — filters dead silence and mic noise
+_RMS_THRESHOLD = 0.01
+# Whisper segments above this no-speech probability are hallucinations
+_NO_SPEECH_THRESHOLD = 0.6
+
 
 class SpeechToText:
     def __init__(self):
@@ -11,5 +16,18 @@ class SpeechToText:
         )
 
     def transcribe(self, audio: np.ndarray) -> str:
-        segments, _ = self._model.transcribe(audio, language="en")
-        return " ".join(s.text for s in segments).strip()
+        rms = float(np.sqrt(np.mean(audio.astype(np.float32) ** 2)))
+        if rms < _RMS_THRESHOLD:
+            return ""
+
+        segments, _ = self._model.transcribe(
+            audio,
+            language="en",
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500},
+        )
+        words = []
+        for s in segments:
+            if s.no_speech_prob < _NO_SPEECH_THRESHOLD:
+                words.append(s.text)
+        return " ".join(words).strip()
