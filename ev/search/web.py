@@ -1,32 +1,40 @@
 from duckduckgo_search import DDGS
 
-# Must appear at the start — strong explicit intent
+# Explicit search phrases — must appear at the start
 SEARCH_PREFIXES = (
-    "search for", "search", "look up", "look for",
-    "tell me about", "find out about",
-    "explain", "define", "definition of",
-    "find information on", "find information about",
-)
-
-# Question words — checked anywhere in the first 4 words so Whisper dropouts don't break it
-QUESTION_WORDS = (
-    "what", "what's", "whats",
-    "who", "who's", "whos",
-    "how", "how's",
-    "when", "where", "why",
+    "search for",
+    "look up",
+    "look for",
+    "tell me about",
+    "find out about",
+    "find information on",
+    "find information about",
+    "what is",
+    "what are",
+    "what was",
+    "what were",
+    "who is",
+    "who are",
+    "who was",
+    "how does",
+    "how do",
+    "how did",
+    "when did",
+    "when was",
+    "where is",
+    "where was",
+    "why does",
+    "why did",
+    "why is",
+    "explain",
+    "define",
+    "definition of",
 )
 
 
 def is_search_query(text: str) -> bool:
     normalized = text.strip().lower().rstrip("?.!")
-    words = normalized.split()
-
-    if any(normalized.startswith(p) for p in SEARCH_PREFIXES):
-        return True
-
-    # Question word anywhere in first 4 words covers Whisper dropouts like
-    # "um who is Elon Musk" or "so what is quantum computing"
-    return any(w in QUESTION_WORDS for w in words[:4])
+    return any(normalized.startswith(p) for p in SEARCH_PREFIXES)
 
 
 def search(query: str, max_results: int = 3) -> str:
