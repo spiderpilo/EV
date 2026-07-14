@@ -45,30 +45,71 @@ for phrases, entry in SHORTCUTS.items():
         _FLAT[phrase.lower().strip()] = entry
 
 
+OPEN_INTENTS = (
+    "open", "launch", "start", "pull up", "load", "go to",
+    "navigate to", "show me", "bring up", "put on", "watch",
+    "can you open", "can you launch", "can you pull up",
+    "could you open", "please open", "hey open",
+)
+
+# Map of keywords to their shortcut key for intent matching
+_KEYWORDS: dict[str, str] = {
+    "youtube": "open youtube",
+    "gmail": "open gmail",
+    "email": "open gmail",
+    "github": "open github",
+    "reddit": "open reddit",
+    "twitter": "open twitter",
+    "netflix": "open netflix",
+    "spotify": "open spotify",
+    "discord": "open discord",
+    "chatgpt": "open chatgpt",
+    "chat gpt": "open chatgpt",
+    "maps": "open maps",
+    "google maps": "open maps",
+    "chrome": "open chrome",
+    "vscode": "open vs code",
+    "vs code": "open vs code",
+    "code": "open vs code",
+    "files": "open files",
+    "file manager": "open files",
+}
+
+
 def _normalize(text: str) -> str:
     return text.lower().strip().rstrip("?.!")
 
 
 def match_shortcut(text: str) -> tuple[str, str | None] | None:
-    """Return (command, spoken_reply) for a known phrase, or None if not matched.
-    spoken_reply is None for commands whose output should be read back directly.
-    """
+    """Return (command, spoken_reply) for a known phrase, or None if not matched."""
     normalized = _normalize(text)
 
+    # 1. Exact match
     if normalized in _FLAT:
         return _FLAT[normalized]
 
-    # Dynamic: "open <site>" / "go to <site>" → chrome to that URL
-    for prefix in ("open ", "go to ", "navigate to ", "search for "):
-        if normalized.startswith(prefix):
-            site = normalized[len(prefix):].strip()
-            if site and " " not in site:
-                url = site if "." in site else f"{site}.com"
-                label = site.split(".")[0].capitalize()
+    # 2. Substring match — "hey can you open netflix for me" contains "open netflix"
+    for phrase, entry in _FLAT.items():
+        if phrase in normalized:
+            return entry
+
+    # 3. Intent + keyword — "I've had a long day, put on netflix" → find "netflix" + open intent
+    for keyword, shortcut_key in _KEYWORDS.items():
+        if keyword in normalized:
+            has_intent = any(intent in normalized for intent in OPEN_INTENTS)
+            # also match if it's just the keyword alone (e.g. "netflix")
+            is_standalone = normalized.strip() == keyword
+            if has_intent or is_standalone:
+                if shortcut_key in _FLAT:
+                    return _FLAT[shortcut_key]
+
+    # 4. Dynamic: any open intent + single unknown word → chrome URL
+    for intent in OPEN_INTENTS:
+        if normalized.startswith(intent + " "):
+            site = normalized[len(intent):].strip().split()[0] if normalized[len(intent):].strip() else ""
+            if site and site.isalpha():
+                url = f"{site}.com"
+                label = site.capitalize()
                 return f"google-chrome https://{url}", f"Opening {label}."
-            if site:
-                query = site.replace(" ", "+")
-                label = site.title()
-                return f"google-chrome 'https://www.google.com/search?q={query}'", f"Searching for {site}."
 
     return None
