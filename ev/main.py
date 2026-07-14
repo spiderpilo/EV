@@ -150,6 +150,82 @@ def terminal_mode(listener, stt, speaker, brain, tts):
         tts.speak(followup)
 
 
+def conversation_session(listener, stt, speaker, face, brain, tts):
+    """Keep listening and responding until silence is detected."""
+    while True:
+        audio = listener.record(duration=LISTEN_DURATION_SEC)
+
+        is_owner_voice, voice_score = speaker.verify(audio)
+        print(f"  Voice verification: {'PASS' if is_owner_voice else 'FAIL'} (score: {voice_score:.3f})")
+
+        frame = face.capture_frame()
+        is_owner_face, face_status = face.recognize(frame)
+        print(f"  Face recognition: {face_status} ({'PASS' if is_owner_face else 'FAIL'})")
+
+        if not is_owner_voice and not is_owner_face:
+            print("  Identity not confirmed. Ignoring.")
+            tts.speak("Sorry, I don't recognize you.")
+            continue
+
+        text = stt.transcribe(audio)
+        print(f"  You said: \"{text}\"")
+
+        if not text or text.strip() in ("", ".", ".."):
+            print("  No speech detected. Returning to idle.")
+            return
+
+        text_lower = text.strip().lower().rstrip(".")
+
+        if is_terminal_trigger(text_lower):
+            terminal_mode(listener, stt, speaker, brain, tts)
+            continue
+
+        if text_lower in INTRO_TRIGGERS:
+            print(f"  [EV]: {INTRO_SCRIPT}")
+            tts.speak(INTRO_SCRIPT)
+            continue
+
+        if any(text_lower.startswith(t) for t in PROJECT_TRIGGERS):
+            select_project(listener, stt, tts)
+            continue
+
+        shortcut = match_shortcut(text)
+        if shortcut:
+            command, reply = shortcut
+            print(f"  [SHORTCUT] {command}")
+            if reply:
+                print(f"  [EV]: {reply}")
+                tts.speak(reply)
+            run_command(command)
+            continue
+
+        context = {
+            "face_recognized": is_owner_face,
+            "voice_verified": is_owner_voice,
+        }
+
+        if is_search_query(text):
+            query = text.strip().rstrip("?.!")
+            encoded = query.replace(" ", "+")
+            url = f"https://www.google.com/search?q={encoded}"
+            print(f"  [SEARCH] Opening browser + querying DDG: {query}")
+            run_command(f"google-chrome '{url}'")
+            snippets = search(query)
+            print(f"  [SEARCH] Snippets: {snippets[:300]}...")
+            response = brain.think(
+                f"Search results for '{query}':\n\n{snippets}\n\n"
+                "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
+                context=context,
+            )
+            print(f"  [EV]: {response}")
+            tts.speak(response)
+            continue
+
+        response = brain.think(text, context=context)
+        print(f"  [EV]: {response}")
+        handle_response(response, brain, tts, context)
+
+
 def main():
     print("=" * 50)
     print("  EV — Virtual Assistant")
@@ -203,89 +279,9 @@ def main():
         else:
             tts.chime()
 
-        audio = listener.record(duration=LISTEN_DURATION_SEC)
+        conversation_session(listener, stt, speaker, face, brain, tts)
 
-        is_owner_voice, voice_score = speaker.verify(audio)
-        print(f"  Voice verification: {'PASS' if is_owner_voice else 'FAIL'} (score: {voice_score:.3f})")
-
-        frame = face.capture_frame()
-        is_owner_face, face_status = face.recognize(frame)
-        print(f"  Face recognition: {face_status} ({'PASS' if is_owner_face else 'FAIL'})")
-
-        if not is_owner_voice and not is_owner_face:
-            print("  Identity not confirmed. Ignoring.")
-            tts.speak("Sorry, I don't recognize you.")
-            continue
-
-        text = stt.transcribe(audio)
-        print(f"  You said: \"{text}\"")
-
-        if not text or text.strip() in ("", ".", ".."):
-            print("  No speech detected. Returning to idle.")
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        text_lower = text.strip().lower().rstrip(".")
-        if is_terminal_trigger(text_lower):
-            terminal_mode(listener, stt, speaker, brain, tts)
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        if text_lower in INTRO_TRIGGERS:
-            print(f"  [EV]: {INTRO_SCRIPT}")
-            tts.speak(INTRO_SCRIPT)
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        if any(text_lower.startswith(t) for t in PROJECT_TRIGGERS):
-            select_project(listener, stt, tts)
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        shortcut = match_shortcut(text)
-        if shortcut:
-            command, reply = shortcut
-            print(f"  [SHORTCUT] {command}")
-            if reply:
-                print(f"  [EV]: {reply}")
-                tts.speak(reply)
-            run_command(command)
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        context = {
-            "face_recognized": is_owner_face,
-            "voice_verified": is_owner_voice,
-        }
-
-        if is_search_query(text):
-            query = text.strip().rstrip("?.!")
-            encoded = query.replace(" ", "+")
-            url = f"https://www.google.com/search?q={encoded}"
-            print(f"  [SEARCH] Opening browser + querying DDG: {query}")
-            run_command(f"google-chrome '{url}'")
-            snippets = search(query)
-            print(f"  [SEARCH] Snippets: {snippets[:300]}...")
-            response = brain.think(
-                f"Search results for '{query}':\n\n{snippets}\n\n"
-                "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
-                context=context,
-            )
-            print(f"  [EV]: {response}")
-            tts.speak(response)
-            listener.cooldown()
-            wake_word.reset()
-            continue
-
-        response = brain.think(text, context=context)
-        print(f"  [EV]: {response}")
-
-        handle_response(response, brain, tts, context)
+        listener.cooldown()
         wake_word.reset()
 
 
