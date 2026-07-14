@@ -3,26 +3,24 @@ import platform
 
 import numpy as np
 import sounddevice as sd
-from scipy.signal import resample
 
-from ev.config import PROJECT_ROOT, TTS_PITCH_SHIFT
+from ev.config import TTS_VOICE
 
-PIPER_VOICE_PATH = PROJECT_ROOT / "models" / "tts" / "en_US-lessac-medium.onnx"
+SAMPLE_RATE = 24000
 
 
 class TextToSpeech:
     def __init__(self):
         self._system = platform.system()
-        self._piper_voice = None
-        self._sample_rate = None
-
-        if PIPER_VOICE_PATH.exists():
-            from piper import PiperVoice
-            self._piper_voice = PiperVoice.load(str(PIPER_VOICE_PATH))
-            self._sample_rate = self._piper_voice.config.sample_rate
+        self._pipeline = None
+        try:
+            from kokoro import KPipeline
+            self._pipeline = KPipeline(lang_code='a')
+            print(f"  Kokoro TTS loaded. Voice: {TTS_VOICE}")
+        except Exception as e:
+            print(f"  Kokoro not available: {e}")
 
     def chime(self):
-        """Play a short ascending three-note chime."""
         sr = 44100
         notes = [523.25, 659.25, 783.99]  # C5, E5, G5
         note_dur = 0.12
@@ -39,14 +37,12 @@ class TextToSpeech:
         sd.wait()
 
     def speak(self, text: str):
-        if self._piper_voice:
+        if self._pipeline:
             chunks = []
-            for chunk in self._piper_voice.synthesize(text):
-                chunks.append(chunk.audio_int16_array)
-            audio = np.concatenate(chunks).astype(np.float32) / 32768.0
-            if TTS_PITCH_SHIFT != 1.0:
-                audio = resample(audio, int(len(audio) / TTS_PITCH_SHIFT))
-            sd.play(audio, samplerate=self._sample_rate)
+            for _, _, audio in self._pipeline(text, voice=TTS_VOICE):
+                chunks.append(audio)
+            audio = np.concatenate(chunks).astype(np.float32)
+            sd.play(audio, samplerate=SAMPLE_RATE)
             sd.wait()
         elif self._system == "Darwin":
             subprocess.run(["say", text], check=True)

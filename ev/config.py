@@ -17,7 +17,7 @@ LLM_MODEL = "Qwen/Qwen2.5-3B-Instruct"
 LLM_ADAPTER = str(PROJECT_ROOT / "models" / "ev-finetuned")
 WHISPER_MODEL = "small"
 
-TTS_PITCH_SHIFT = 1.2  # 1.0 = original, higher = younger (try 1.1 to 1.2)
+TTS_VOICE = "af_heart"
 
 FACE_RECOGNITION_TOLERANCE = 0.6
 SPEAKER_VERIFICATION_THRESHOLD = 0.25
