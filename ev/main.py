@@ -151,8 +151,12 @@ def terminal_mode(listener, stt, speaker, brain, tts):
         tts.speak(followup)
 
 
+_MAX_HISTORY_TURNS = 10  # keep last N user+assistant pairs
+
+
 def conversation_session(listener, stt, speaker, face, brain, tts, logger):
     """Keep listening and responding until silence is detected."""
+    history: list[dict] = []
     while True:
         audio = listener.record(duration=LISTEN_DURATION_SEC)
 
@@ -219,16 +223,25 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
                 f"Search results for '{query}':\n\n{snippets}\n\n"
                 "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
                 context=context,
+                history=history,
             )
             print(f"  [EV]: {response}")
             tts.speak(response)
             logger.log(text, response)
+            history.append({"role": "user", "content": text})
+            history.append({"role": "assistant", "content": response})
+            if len(history) > _MAX_HISTORY_TURNS * 2:
+                history = history[-_MAX_HISTORY_TURNS * 2:]
             continue
 
-        response = brain.think(text, context=context)
+        response = brain.think(text, context=context, history=history)
         print(f"  [EV]: {response}")
         handle_response(response, brain, tts, context)
         logger.log(text, response)
+        history.append({"role": "user", "content": text})
+        history.append({"role": "assistant", "content": response})
+        if len(history) > _MAX_HISTORY_TURNS * 2:
+            history = history[-_MAX_HISTORY_TURNS * 2:]
 
 
 def main():
