@@ -220,8 +220,9 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
             snippets = search(query)
             print(f"  [SEARCH] Snippets: {snippets[:300]}...")
             response = brain.think(
-                f"Search results for '{query}':\n\n{snippets}\n\n"
-                "Summarize this in 2-3 sentences for Piolo, spoken aloud.",
+                f"Here is information about '{query}':\n\n{snippets}\n\n"
+                "Answer Piolo's question in 2-3 natural spoken sentences. "
+                "Do not mention searching, results, or any source — just speak the answer directly.",
                 context=context,
                 history=history,
             )
