@@ -14,6 +14,7 @@ from ev.shell.shortcuts import match_shortcut
 from ev.search.web import is_search_query, search
 from ev.projects import PROJECT_TRIGGERS, list_projects, match_project, open_project
 from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT, INTRO_TRIGGERS, INTRO_SCRIPT
+from ev.logger import ConversationLogger
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
 TERMINAL_KEYWORDS = ("terminal", "termin")
@@ -150,7 +151,7 @@ def terminal_mode(listener, stt, speaker, brain, tts):
         tts.speak(followup)
 
 
-def conversation_session(listener, stt, speaker, face, brain, tts):
+def conversation_session(listener, stt, speaker, face, brain, tts, logger):
     """Keep listening and responding until silence is detected."""
     while True:
         audio = listener.record(duration=LISTEN_DURATION_SEC)
@@ -183,6 +184,7 @@ def conversation_session(listener, stt, speaker, face, brain, tts):
         if text_lower in INTRO_TRIGGERS:
             print(f"  [EV]: {INTRO_SCRIPT}")
             tts.speak(INTRO_SCRIPT)
+            logger.log(text, INTRO_SCRIPT)
             continue
 
         if any(text_lower.startswith(t) for t in PROJECT_TRIGGERS):
@@ -196,6 +198,7 @@ def conversation_session(listener, stt, speaker, face, brain, tts):
             if reply:
                 print(f"  [EV]: {reply}")
                 tts.speak(reply)
+                logger.log(text, reply)
             run_command(command)
             continue
 
@@ -219,11 +222,13 @@ def conversation_session(listener, stt, speaker, face, brain, tts):
             )
             print(f"  [EV]: {response}")
             tts.speak(response)
+            logger.log(text, response)
             continue
 
         response = brain.think(text, context=context)
         print(f"  [EV]: {response}")
         handle_response(response, brain, tts, context)
+        logger.log(text, response)
 
 
 def main():
@@ -254,6 +259,7 @@ def main():
     brain = LLMBrain()
 
     tts = TextToSpeech()
+    logger = ConversationLogger()
 
     def shutdown(sig, frame):
         print("\n\nShutting down EV...")
@@ -279,7 +285,7 @@ def main():
         else:
             tts.chime()
 
-        conversation_session(listener, stt, speaker, face, brain, tts)
+        conversation_session(listener, stt, speaker, face, brain, tts, logger)
 
         listener.cooldown()
         wake_word.reset()
