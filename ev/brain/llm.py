@@ -14,17 +14,26 @@ class LLMBrain:
         if self._tokenizer.pad_token is None:
             self._tokenizer.pad_token = self._tokenizer.eos_token
 
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self._model_path,
-            device_map="auto",
-            dtype=torch.float16,
-            quantization_config=BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_quant_type="nf4",
-            ),
-            attn_implementation="sdpa",
-        )
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self._model_path,
+                device_map="auto",
+                torch_dtype=torch.float16,
+                quantization_config=BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_quant_type="nf4",
+                    llm_int8_enable_fp32_cpu_offload=True,
+                ),
+                attn_implementation="sdpa",
+            )
+        except (ValueError, RuntimeError) as e:
+            print(f"  WARNING: GPU load failed ({e}), falling back to CPU.")
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self._model_path,
+                device_map="cpu",
+                torch_dtype=torch.float32,
+            )
 
         if self._adapter_path:
             from peft import PeftModel
