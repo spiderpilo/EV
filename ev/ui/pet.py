@@ -35,10 +35,8 @@ class DesktopPet(QWidget):
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.WindowStaysOnTopHint
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -57,9 +55,9 @@ class DesktopPet(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
-        # Fill entire rect with alpha=1 so Wayland routes all mouse events to this window.
-        # Without this, transparent pixels are click-through on Wayland compositors.
-        painter.fillRect(self.rect(), QColor(0, 0, 0, 1))
+        # Solid background matching the image's dark navy — required on Wayland
+        # since transparent windows can't receive mouse events reliably.
+        painter.fillRect(self.rect(), QColor(13, 17, 27))
 
         state, _ = ev_state.get_state()
         t = self._tick
