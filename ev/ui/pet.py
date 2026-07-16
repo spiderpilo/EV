@@ -57,6 +57,10 @@ class DesktopPet(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
+        # Fill entire rect with alpha=1 so Wayland routes all mouse events to this window.
+        # Without this, transparent pixels are click-through on Wayland compositors.
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 1))
+
         state, _ = ev_state.get_state()
         t = self._tick
         color = COLORS.get(state, COLORS["idle"])
