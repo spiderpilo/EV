@@ -40,6 +40,7 @@ class DesktopPet(QWidget):
         super().__init__()
         self._tick = 0
         self._drag_pos = None
+        self._home = None  # set after window is placed
 
         self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
 
@@ -53,6 +54,7 @@ class DesktopPet(QWidget):
 
         screen = QApplication.primaryScreen().availableGeometry()
         self.move(screen.width() - (IMG_SIZE + 40), screen.height() - (IMG_SIZE + 60))
+        self._home = self.pos()
 
         timer = QTimer(self)
         timer.timeout.connect(self._step)
@@ -60,6 +62,11 @@ class DesktopPet(QWidget):
 
     def _step(self):
         self._tick += 1
+        # Gentle float around the home position
+        if self._home is not None and self._drag_pos is None:
+            ox = int(3 * math.sin(self._tick * 0.03))
+            oy = int(2 * math.sin(self._tick * 0.05))
+            self.move(self._home.x() + ox, self._home.y() + oy)
         self.update()
 
     def paintEvent(self, event):
@@ -149,6 +156,7 @@ class DesktopPet(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
+        self._home = self.pos()  # anchor float to wherever she was dropped
         self._drag_pos = None
         event.accept()
 
