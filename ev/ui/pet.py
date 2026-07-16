@@ -2,6 +2,16 @@ import math
 import os
 from pathlib import Path
 
+# Use XWayland so frameless transparent windows get proper input on GNOME Wayland.
+try:
+    import PyQt6 as _pyqt6
+    os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(
+        Path(_pyqt6.__file__).parent / "Qt6" / "plugins"
+    )
+except Exception:
+    pass
+os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+
 from PyQt6.QtWidgets import QApplication, QWidget, QMenu
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap
@@ -10,13 +20,12 @@ from ev.ui import state as ev_state
 
 ICONS_DIR = Path(__file__).parent / "icons"
 
-# Image display geometry
 IMG_SIZE = 110
 IMG_X = 10
 IMG_Y = 5
-CX = IMG_X + IMG_SIZE // 2   # 65
-CY = IMG_Y + IMG_SIZE // 2   # 60
-R  = IMG_SIZE // 2            # 55
+CX = IMG_X + IMG_SIZE // 2
+CY = IMG_Y + IMG_SIZE // 2
+R  = IMG_SIZE // 2
 
 COLORS = {
     "idle":      QColor(100, 116, 139),
@@ -30,12 +39,16 @@ class DesktopPet(QWidget):
     def __init__(self):
         super().__init__()
         self._tick = 0
+        self._drag_pos = None
 
         self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
 
-        # Frameless only — WindowStaysOnTopHint breaks input on GNOME Wayland.
-        # Use startSystemMove() so the compositor handles dragging natively.
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -43,7 +56,7 @@ class DesktopPet(QWidget):
 
         timer = QTimer(self)
         timer.timeout.connect(self._step)
-        timer.start(40)  # 25 fps
+        timer.start(40)
 
     def _step(self):
         self._tick += 1
@@ -53,9 +66,6 @@ class DesktopPet(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-
-        # Solid background matching the EV icon's dark navy
-        painter.fillRect(self.rect(), QColor(13, 17, 27))
 
         state, _ = ev_state.get_state()
         t = self._tick
@@ -128,10 +138,19 @@ class DesktopPet(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            # Wayland-native move — compositor handles dragging directly
-            if self.windowHandle():
-                self.windowHandle().startSystemMove()
+            self._drag_pos = event.globalPosition().toPoint()
             event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
+            delta = event.globalPosition().toPoint() - self._drag_pos
+            self.move(self.pos() + delta)
+            self._drag_pos = event.globalPosition().toPoint()
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+        event.accept()
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
