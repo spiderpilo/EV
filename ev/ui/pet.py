@@ -1,14 +1,21 @@
 import math
+from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont
+from PyQt6.QtCore import Qt, QTimer, QRect
+from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap
 
 from ev.ui import state as ev_state
 
-# Circle geometry
-CX, CY = 60, 55
-R = 38
+ICONS_DIR = Path(__file__).parent / "icons"
+
+# Image display geometry
+IMG_SIZE = 110
+IMG_X = 10
+IMG_Y = 5
+CX = IMG_X + IMG_SIZE // 2   # 65
+CY = IMG_Y + IMG_SIZE // 2   # 60
+R  = IMG_SIZE // 2            # 55  — radius used for animation positioning
 
 COLORS = {
     "idle":      QColor(100, 116, 139),  # slate
@@ -24,17 +31,18 @@ class DesktopPet(QWidget):
         self._tick = 0
         self._drag_pos = None
 
+        self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
+
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(120, 130)
+        self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
-        # Default: bottom-right corner
         screen = QApplication.primaryScreen().availableGeometry()
-        self.move(screen.width() - 140, screen.height() - 155)
+        self.move(screen.width() - (IMG_SIZE + 40), screen.height() - (IMG_SIZE + 60))
 
         timer = QTimer(self)
         timer.timeout.connect(self._step)
@@ -47,6 +55,7 @@ class DesktopPet(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         state, _ = ev_state.get_state()
         t = self._tick
@@ -68,8 +77,8 @@ class DesktopPet(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             for i in range(5):
                 angle = math.radians((t * 6 + i * 72) % 360)
-                dx = (R + 15) * math.cos(angle)
-                dy = (R + 15) * math.sin(angle)
+                dx = (R + 14) * math.cos(angle)
+                dy = (R + 14) * math.sin(angle)
                 c = QColor(color)
                 c.setAlpha(220 - i * 35)
                 painter.setBrush(c)
@@ -83,38 +92,40 @@ class DesktopPet(QWidget):
             sx = CX - total_w // 2
             for i in range(bars):
                 phase = math.radians((t * 9 + i * 45) % 360)
-                h = int(5 + 20 * abs(math.sin(phase)))
+                h = int(5 + 16 * abs(math.sin(phase)))
                 c = QColor(color)
                 c.setAlpha(200)
                 painter.setBrush(c)
                 bx = sx + i * (bar_w + gap)
-                painter.drawRoundedRect(bx, CY + R + 6, bar_w, h, 2, 2)
+                painter.drawRoundedRect(bx, IMG_Y + IMG_SIZE + 4, bar_w, h, 2, 2)
 
         elif state == "idle":
             pulse = math.sin(t * 0.05) * 3
-            rr = R + 8 + pulse
+            rr = R + 6 + pulse
             c = QColor(color)
-            c.setAlpha(45)
+            c.setAlpha(40)
             painter.setPen(QPen(c, 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawEllipse(int(CX - rr), int(CY - rr), int(rr * 2), int(rr * 2))
 
-        # --- main circle ---
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-        painter.drawEllipse(CX - R, CY - R, R * 2, R * 2)
+        # --- robot image ---
+        if not self._pixmap.isNull():
+            scaled = self._pixmap.scaled(
+                IMG_SIZE, IMG_SIZE,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            painter.drawPixmap(IMG_X, IMG_Y, scaled)
 
-        # "EV" text
-        font = QFont("Arial", 15, QFont.Weight.Bold)
+        # --- state label ---
+        font = QFont("Arial", 7)
         painter.setFont(font)
-        painter.setPen(QColor(255, 255, 255, 230))
-        painter.drawText(CX - 20, CY - 11, 40, 22, Qt.AlignmentFlag.AlignCenter, "EV")
-
-        # state label
-        font2 = QFont("Arial", 7)
-        painter.setFont(font2)
         painter.setPen(QColor(180, 190, 210, 170))
-        painter.drawText(0, CY + R + 2, 120, 14, Qt.AlignmentFlag.AlignCenter, state.upper())
+        painter.drawText(
+            0, IMG_Y + IMG_SIZE + 2, IMG_SIZE + 20, 14,
+            Qt.AlignmentFlag.AlignCenter,
+            state.upper(),
+        )
 
         painter.end()
 
