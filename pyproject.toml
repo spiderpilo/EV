@@ -24,6 +24,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ui = [
+    "PyQt6>=6.6",
+]
 fine-tune = [
     "peft>=0.10",
     "trl>=0.8",

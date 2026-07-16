@@ -1,6 +1,7 @@
 import re
 import signal
 import sys
+import threading
 
 from ev.wake_word.detector import WakeWordDetector
 from ev.audio.listener import AudioListener
@@ -15,6 +16,7 @@ from ev.search.web import is_search_query, search
 from ev.projects import PROJECT_TRIGGERS, list_projects, match_project, open_project
 from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT, INTRO_TRIGGERS, INTRO_SCRIPT
 from ev.logger import ConversationLogger
+from ev.ui import state as ev_state
 
 CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
 TERMINAL_KEYWORDS = ("terminal", "termin")
@@ -186,8 +188,10 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
             continue
 
         if text_lower in INTRO_TRIGGERS:
+            ev_state.set_state("speaking", INTRO_SCRIPT)
             print(f"  [EV]: {INTRO_SCRIPT}")
             tts.speak(INTRO_SCRIPT)
+            ev_state.set_state("listening")
             logger.log(text, INTRO_SCRIPT)
             continue
 
@@ -200,8 +204,10 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
             command, reply = shortcut
             print(f"  [SHORTCUT] {command}")
             if reply:
+                ev_state.set_state("speaking", reply)
                 print(f"  [EV]: {reply}")
                 tts.speak(reply)
+                ev_state.set_state("listening")
                 logger.log(text, reply)
             run_command(command)
             continue
@@ -219,6 +225,7 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
             run_command(f"google-chrome '{url}'")
             snippets = search(query)
             print(f"  [SEARCH] Snippets: {snippets[:300]}...")
+            ev_state.set_state("thinking")
             response = brain.think(
                 f"Here is information about '{query}':\n\n{snippets}\n\n"
                 "Answer Piolo's question in 2-3 natural spoken sentences. "
@@ -226,8 +233,10 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
                 context=context,
                 history=history,
             )
+            ev_state.set_state("speaking", response)
             print(f"  [EV]: {response}")
             tts.speak(response)
+            ev_state.set_state("listening")
             logger.log(text, response)
             history.append({"role": "user", "content": text})
             history.append({"role": "assistant", "content": response})
@@ -235,9 +244,12 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
                 history = history[-_MAX_HISTORY_TURNS * 2:]
             continue
 
+        ev_state.set_state("thinking")
         response = brain.think(text, context=context, history=history)
+        ev_state.set_state("speaking", response)
         print(f"  [EV]: {response}")
         handle_response(response, brain, tts, context)
+        ev_state.set_state("listening")
         logger.log(text, response)
         history.append({"role": "user", "content": text})
         history.append({"role": "assistant", "content": response})
@@ -245,7 +257,7 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
             history = history[-_MAX_HISTORY_TURNS * 2:]
 
 
-def main():
+def ev_loop():
     print("=" * 50)
     print("  EV — Virtual Assistant")
     print("=" * 50)
@@ -275,34 +287,68 @@ def main():
     tts = TextToSpeech()
     logger = ConversationLogger()
 
-    def shutdown(sig, frame):
-        print("\n\nShutting down EV...")
-        face.release()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, shutdown)
-
     print("\n" + "=" * 50)
     print("  EV is ready. Say 'EV' to activate!")
     print("=" * 50 + "\n")
 
+    ev_state.set_state("idle")
     greeted = False
 
-    for chunk in listener.stream_chunks(chunk_duration=0.5):
-        if not wake_word.detect(chunk):
-            continue
+    try:
+        for chunk in listener.stream_chunks(chunk_duration=0.5):
+            if not wake_word.detect(chunk):
+                continue
 
-        print("\n[EV] Wake word detected! Listening...")
-        if not greeted:
-            tts.speak("Hello Piolo")
-            greeted = True
-        else:
-            tts.chime()
+            print("\n[EV] Wake word detected! Listening...")
+            ev_state.set_state("listening")
 
-        conversation_session(listener, stt, speaker, face, brain, tts, logger)
+            if not greeted:
+                tts.speak("Hello Piolo")
+                greeted = True
+            else:
+                tts.chime()
 
-        listener.cooldown()
-        wake_word.reset()
+            conversation_session(listener, stt, speaker, face, brain, tts, logger)
+
+            ev_state.set_state("idle")
+            listener.cooldown()
+            wake_word.reset()
+    finally:
+        face.release()
+
+
+def main():
+    try:
+        from PyQt6.QtWidgets import QApplication
+        from ev.ui.pet import DesktopPet
+
+        app = QApplication(sys.argv)
+        app.setQuitOnLastWindowClosed(False)
+
+        pet = DesktopPet()
+        pet.show()
+
+        def qt_shutdown(sig, frame):
+            print("\n\nShutting down EV...")
+            app.quit()
+
+        signal.signal(signal.SIGINT, qt_shutdown)
+
+        t = threading.Thread(target=ev_loop, daemon=True)
+        t.start()
+
+        sys.exit(app.exec())
+
+    except ImportError:
+        print("PyQt6 not found — running without desktop pet.")
+        print("Install with: pip install PyQt6\n")
+
+        def headless_shutdown(sig, frame):
+            print("\n\nShutting down EV...")
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, headless_shutdown)
+        ev_loop()
 
 
 if __name__ == "__main__":
