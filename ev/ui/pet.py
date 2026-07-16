@@ -1,5 +1,10 @@
 import math
+import os
 from pathlib import Path
+
+# Force XWayland so frameless windows get proper mouse input on GNOME Wayland.
+# Requires libxcb-cursor0: sudo apt install libxcb-cursor0
+os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 from PyQt6.QtWidgets import QApplication, QWidget, QMenu
 from PyQt6.QtCore import Qt, QTimer
@@ -33,7 +38,11 @@ class DesktopPet(QWidget):
 
         self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -51,10 +60,6 @@ class DesktopPet(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-
-        # Solid background matching the image's dark navy — required on Wayland
-        # since transparent windows can't receive mouse events reliably.
-        painter.fillRect(self.rect(), QColor(13, 17, 27))
 
         state, _ = ev_state.get_state()
         t = self._tick
