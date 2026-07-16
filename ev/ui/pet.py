@@ -2,10 +2,6 @@ import math
 import os
 from pathlib import Path
 
-# Force XWayland so frameless windows get proper mouse input on GNOME Wayland.
-# Requires libxcb-cursor0: sudo apt install libxcb-cursor0
-os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
-
 from PyQt6.QtWidgets import QApplication, QWidget, QMenu
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap
@@ -20,13 +16,13 @@ IMG_X = 10
 IMG_Y = 5
 CX = IMG_X + IMG_SIZE // 2   # 65
 CY = IMG_Y + IMG_SIZE // 2   # 60
-R  = IMG_SIZE // 2            # 55  — radius used for animation positioning
+R  = IMG_SIZE // 2            # 55
 
 COLORS = {
-    "idle":      QColor(100, 116, 139),  # slate
-    "listening": QColor(59,  130, 246),  # blue
-    "thinking":  QColor(245, 158,  11),  # amber
-    "speaking":  QColor(16,  185, 129),  # emerald
+    "idle":      QColor(100, 116, 139),
+    "listening": QColor(59,  130, 246),
+    "thinking":  QColor(245, 158,  11),
+    "speaking":  QColor(16,  185, 129),
 }
 
 
@@ -34,15 +30,12 @@ class DesktopPet(QWidget):
     def __init__(self):
         super().__init__()
         self._tick = 0
-        self._drag_pos = None
 
         self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
 
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Frameless only — WindowStaysOnTopHint breaks input on GNOME Wayland.
+        # Use startSystemMove() so the compositor handles dragging natively.
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -61,11 +54,13 @@ class DesktopPet(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
+        # Solid background matching the EV icon's dark navy
+        painter.fillRect(self.rect(), QColor(13, 17, 27))
+
         state, _ = ev_state.get_state()
         t = self._tick
         color = COLORS.get(state, COLORS["idle"])
 
-        # --- outer effects per state ---
         if state == "listening":
             for i in range(3):
                 phase = (t * 1.6 + i * 22) % 65
@@ -112,7 +107,6 @@ class DesktopPet(QWidget):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawEllipse(int(CX - rr), int(CY - rr), int(rr * 2), int(rr * 2))
 
-        # --- robot image ---
         if not self._pixmap.isNull():
             scaled = self._pixmap.scaled(
                 IMG_SIZE, IMG_SIZE,
@@ -121,7 +115,6 @@ class DesktopPet(QWidget):
             )
             painter.drawPixmap(IMG_X, IMG_Y, scaled)
 
-        # --- state label ---
         font = QFont("Arial", 7)
         painter.setFont(font)
         painter.setPen(QColor(180, 190, 210, 170))
@@ -135,19 +128,10 @@ class DesktopPet(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint()
+            # Wayland-native move — compositor handles dragging directly
+            if self.windowHandle():
+                self.windowHandle().startSystemMove()
             event.accept()
-
-    def mouseMoveEvent(self, event):
-        if self._drag_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
-            delta = event.globalPosition().toPoint() - self._drag_pos
-            self.move(self.pos() + delta)
-            self._drag_pos = event.globalPosition().toPoint()
-            event.accept()
-
-    def mouseReleaseEvent(self, event):
-        self._drag_pos = None
-        event.accept()
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
