@@ -1,8 +1,8 @@
 import math
 from pathlib import Path
 
-from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QTimer, QRect
+from PyQt6.QtWidgets import QApplication, QWidget, QMenu
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap
 
 from ev.ui import state as ev_state
@@ -33,10 +33,7 @@ class DesktopPet(QWidget):
 
         self._pixmap = QPixmap(str(ICONS_DIR / "EV.png"))
 
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint
-        )
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setFixedSize(IMG_SIZE + 20, IMG_SIZE + 40)
 
         screen = QApplication.primaryScreen().availableGeometry()
@@ -146,3 +143,8 @@ class DesktopPet(QWidget):
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
         event.accept()
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.addAction("Close EV", QApplication.instance().quit)
+        menu.exec(event.globalPos())
