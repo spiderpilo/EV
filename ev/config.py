@@ -13,8 +13,8 @@ SAMPLE_RATE = 16000
 AUDIO_CHANNELS = 1
 LISTEN_DURATION_SEC = 5
 
-LLM_MODEL = "Qwen/Qwen2.5-3B-Instruct"
-LLM_ADAPTER = str(PROJECT_ROOT / "models" / "ev-finetuned")
+LLM_MODEL = "Qwen/Qwen2.5-Coder-3B-Instruct"
+LLM_ADAPTER = str(PROJECT_ROOT / "models" / "ev-coder-finetuned")
 WHISPER_MODEL = "small"
 
 TTS_VOICE = "af_heart"

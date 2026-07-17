@@ -32,7 +32,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fine-tune a model for EV")
     parser.add_argument(
         "--model",
-        default="Qwen/Qwen2.5-3B-Instruct",
+        default="Qwen/Qwen2.5-Coder-3B-Instruct",
         help="HuggingFace model to fine-tune",
     )
     parser.add_argument(
@@ -47,7 +47,7 @@ def main():
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument(
         "--output",
-        default="models/ev-finetuned",
+        default="models/ev-coder-finetuned",
         help="Output directory for the adapter",
     )
     args = parser.parse_args()
@@ -88,7 +88,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         device_map="auto",
-        dtype=torch.float16,
+        torch_dtype=torch.float16,
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,

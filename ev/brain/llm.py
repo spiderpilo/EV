@@ -1,6 +1,8 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+from pathlib import Path
+
 from ev.config import LLM_MODEL, LLM_ADAPTER, SYSTEM_PROMPT
 
 
@@ -35,10 +37,12 @@ class LLMBrain:
                 torch_dtype=torch.float32,
             )
 
-        if self._adapter_path:
+        if self._adapter_path and Path(self._adapter_path).exists():
             from peft import PeftModel
             print(f"  Loading adapter: {self._adapter_path}")
             self._model = PeftModel.from_pretrained(self._model, self._adapter_path)
+        elif self._adapter_path:
+            print(f"  No adapter found at {self._adapter_path} — run scripts/fine_tune.py to train one.")
 
         self._model.eval()
         print("  LLM loaded.")
