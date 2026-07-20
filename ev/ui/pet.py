@@ -94,6 +94,11 @@ class DesktopPet(QWidget):
         timer.timeout.connect(self._step)
         timer.start(40)   # 25 fps
 
+        # Re-assert always-on-top every second in case another window covers her
+        top_timer = QTimer(self)
+        top_timer.timeout.connect(self.raise_)
+        top_timer.start(1000)
+
     # ------------------------------------------------------------------ #
     #  Main loop                                                           #
     # ------------------------------------------------------------------ #
