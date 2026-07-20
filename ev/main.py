@@ -18,9 +18,16 @@ from ev.config import LISTEN_DURATION_SEC, TERMINAL_SYSTEM_PROMPT, INTRO_TRIGGER
 from ev.logger import ConversationLogger
 from ev.ui import state as ev_state
 
-CMD_PATTERN = re.compile(r"\[CMD:\s*(.+?)\]")
+CMD_PATTERN  = re.compile(r"\[CMD:\s*(.+?)\]")
+CODE_PATTERN = re.compile(r"```(?:\w*\n)?([\s\S]*?)```")
 TERMINAL_KEYWORDS = ("terminal", "termin")
 EXIT_TRIGGERS = ("exit terminal", "exit", "quit", "stop", "leave terminal")
+
+
+def _push_code(response: str) -> None:
+    """If the response contains a code block, send it to the pet panel."""
+    match = CODE_PATTERN.search(response)
+    ev_state.set_code(match.group(1).strip() if match else "")
 
 
 def is_terminal_trigger(text: str) -> bool:
@@ -246,6 +253,7 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
 
         ev_state.set_state("thinking")
         response = brain.think(text, context=context, history=history)
+        _push_code(response)
         ev_state.set_state("speaking", response)
         print(f"  [EV]: {response}")
         handle_response(response, brain, tts, context)
@@ -311,6 +319,7 @@ def ev_loop():
             conversation_session(listener, stt, speaker, face, brain, tts, logger)
 
             ev_state.set_state("idle")
+            ev_state.set_code("")
             listener.cooldown()
             wake_word.reset()
     finally:
