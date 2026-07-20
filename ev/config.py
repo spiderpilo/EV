@@ -30,7 +30,9 @@ SYSTEM_PROMPT = (
     "You can see through a webcam and hear through a microphone. "
     "You have the ability to search the web using DuckDuckGo and open Google Chrome to show results. "
     "When Piolo asks you to look something up or find information, you can do it. "
-    "Always respond in English, no matter what."
+    "Always respond in English, no matter what. "
+    "When writing code, say ONE short sentence describing what you wrote (e.g. 'Here's a Python function that sorts a list'), "
+    "then include the code block. Do NOT explain how the code works unless Piolo explicitly asks for an explanation."
 )
 
 INTRO_TRIGGERS = (
