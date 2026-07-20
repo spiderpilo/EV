@@ -167,7 +167,8 @@ def conversation_session(listener, stt, speaker, face, brain, tts, logger):
     """Keep listening and responding until silence is detected."""
     history: list[dict] = []
     while True:
-        audio = listener.record(duration=LISTEN_DURATION_SEC)
+        listener.flush()
+        audio = listener.record()
 
         is_owner_voice, voice_score = speaker.verify(audio)
         print(f"  Voice verification: {'PASS' if is_owner_voice else 'FAIL'} (score: {voice_score:.3f})")
@@ -303,9 +304,12 @@ def ev_loop():
     greeted = False
 
     try:
-        for chunk in listener.stream_chunks(chunk_duration=0.5):
-            if not wake_word.detect(chunk):
-                continue
+        while True:
+            # Break out of the generator when wake word fires so its InputStream
+            # is fully closed before record() opens a new one (prevents doubling).
+            for chunk in listener.stream_chunks(chunk_duration=0.5):
+                if wake_word.detect(chunk):
+                    break
 
             print("\n[EV] Wake word detected! Listening...")
             ev_state.set_state("listening")
@@ -316,6 +320,7 @@ def ev_loop():
             else:
                 tts.chime()
 
+            listener.flush()
             conversation_session(listener, stt, speaker, face, brain, tts, logger)
 
             ev_state.set_state("idle")
