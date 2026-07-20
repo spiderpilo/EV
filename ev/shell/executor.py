@@ -25,6 +25,18 @@ GUI_APPS = (
     "evince", "eog",
 )
 
+# xdotool WM_CLASS names for apps that reuse an existing process (e.g. Chrome)
+_WM_CLASS = {
+    "google-chrome": "google-chrome",
+    "chromium":      "chromium",
+    "firefox":       "firefox",
+    "code":          "code",
+    "discord":       "discord",
+    "spotify":       "spotify",
+    "slack":         "slack",
+    "nautilus":      "org.gnome.nautilus",
+}
+
 
 def is_dangerous(command: str) -> bool:
     cmd = command.strip().lstrip("&|;")
@@ -74,6 +86,33 @@ def run_command(command: str, timeout: int = 15) -> tuple[bool, str]:
         return False, str(e)
 
 
+def _raise_window(pid: int, app_name: str) -> None:
+    """Focus and raise the window that belongs to pid, falling back to WM_CLASS search."""
+    if not shutil.which("xdotool"):
+        return
+
+    r = subprocess.run(
+        ["xdotool", "search", "--pid", str(pid)],
+        capture_output=True, text=True,
+    )
+    wids = r.stdout.strip().split()
+
+    if not wids:
+        wm_class = _WM_CLASS.get(app_name, "")
+        if not wm_class:
+            return
+        r = subprocess.run(
+            ["xdotool", "search", "--class", wm_class],
+            capture_output=True, text=True,
+        )
+        wids = r.stdout.strip().split()
+
+    if wids:
+        wid = wids[-1]
+        subprocess.run(["xdotool", "windowfocus", "--sync", wid], capture_output=True)
+        subprocess.run(["xdotool", "windowraise", wid], capture_output=True)
+
+
 def _launch_gui(command: str) -> tuple[bool, str]:
     command = command.rstrip("& ")
     try:
@@ -88,6 +127,7 @@ def _launch_gui(command: str) -> tuple[bool, str]:
             err = proc.stderr.read().decode().strip() if proc.stderr else ""
             return False, err or "App exited immediately."
         app_name = command.strip().split()[0].split("/")[-1]
+        _raise_window(proc.pid, app_name)
         return True, f"Launched {app_name} successfully."
     except Exception as e:
         return False, str(e)
