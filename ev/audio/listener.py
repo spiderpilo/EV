@@ -8,7 +8,7 @@ from ev.config import SAMPLE_RATE, AUDIO_CHANNELS
 # VAD recording parameters
 _CHUNK_MS       = 100    # chunk size in ms
 _SPEECH_RMS     = 0.01   # RMS threshold to consider a chunk as speech
-_SILENCE_AFTER  = 1.2    # seconds of silence before stopping
+_SILENCE_AFTER  = 1.8    # seconds of silence before stopping
 _MAX_DURATION   = 30.0   # hard cap so EV doesn't listen forever
 
 
