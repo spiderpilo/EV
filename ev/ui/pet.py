@@ -169,12 +169,13 @@ class DesktopPet(QWidget):
 
         def _finished():
             self._animating = False
+            self._pos_anim = None
             if on_done:
                 on_done()
 
         anim.finished.connect(_finished)
         anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-        self._pos_anim = anim   # prevent GC
+        self._pos_anim = anim
 
     # ------------------------------------------------------------------ #
     #  Paint                                                               #
@@ -254,8 +255,12 @@ class DesktopPet(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            if self._pos_anim:
-                self._pos_anim.stop()
+            if self._pos_anim is not None:
+                try:
+                    self._pos_anim.stop()
+                except RuntimeError:
+                    pass
+                self._pos_anim = None
             self._animating = False
             self._drag_pos = event.globalPosition().toPoint()
             event.accept()
