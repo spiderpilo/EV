@@ -12,18 +12,14 @@ _COOLDOWN_SEC = 4.0
 
 class WakeWordDetector:
     def __init__(self):
-        if CUSTOM_MODEL_PATH.exists():
-            self._model = Model(
-                wakeword_models=[str(CUSTOM_MODEL_PATH)],
-                inference_framework="onnx",
-            )
-            self._model_name = CUSTOM_MODEL_PATH.stem
-        else:
-            self._model = Model(
-                wakeword_models=["hey_jarvis"],
-                inference_framework="onnx",
-            )
-            self._model_name = "hey_jarvis"
+        models = [str(CUSTOM_MODEL_PATH)] if CUSTOM_MODEL_PATH.exists() else ["hey_jarvis"]
+        self._model_name = CUSTOM_MODEL_PATH.stem if CUSTOM_MODEL_PATH.exists() else "hey_jarvis"
+        # Force CPU so the LLM has full GPU to itself
+        self._model = Model(
+            wakeword_models=models,
+            inference_framework="onnx",
+            device="cpu",
+        )
         self._threshold = 0.6 if CUSTOM_MODEL_PATH.exists() else 0.7
         self._ready_at = 0.0
         self._consecutive = 0
